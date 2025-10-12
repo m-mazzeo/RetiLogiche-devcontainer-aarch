@@ -1,0 +1,31 @@
+{
+    "name": "reti",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+
+    "workspaceMount": "source=${localWorkspaceFolder}/WorkSpace,target=/home/vscode/RETI/workdir,type=bind",
+    "workspaceFolder": "/home/vscode/RETI/workdir",
+    
+    // "features": {
+    // },
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "tomoki1207.pdf",
+                "basdp.language-gas-x86",
+                "mshr-h.veriloghdl",
+                "lramseyer.vaporview"
+            ]
+        }
+    },
+
+    "remoteUser": "vscode" // ,
+
+    // "runArgs": [
+    //     "-e", "XDG_RUNTIME_DIR=/tmp",
+    //     "-e", "WAYLAND_DISPLAY=wayland-0",
+    //     "-v", "/tmp/wayland-0:/tmp/wayland-0" // usa poi xhost +local:docker per il suo corretto funzionamento
+    // ]
+}

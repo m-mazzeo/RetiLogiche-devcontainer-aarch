@@ -1,0 +1,9 @@
+
+layout {
+  pane size=1 {
+    command "$debug_executable; read -p 'Press enter to close'"
+  }
+  pane {
+    command "$start_executable; read -p 'Press enter to close'"
+  }
+}
