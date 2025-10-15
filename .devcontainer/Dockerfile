@@ -9,11 +9,14 @@ RUN apt update && apt install -y gcc-multilib-i686-linux-gnu \
 	binutils-i686-linux-gnu-dbg gdb-multiarch
 RUN apt update && apt install -y qemu-user-static \
 	libc6-i386-cross 
-RUN apt update && apt install -y file tmux
+RUN apt update && apt install -y file 
+
 # tmux
 	
 RUN ln -s $(find /usr/i686-linux-gnu/ -name ld-linux.so.2 | head -n 1) /lib/
 RUN ln -s $(find /usr/i686-linux-gnu/ -name libc.so.6 | head -n 1) /lib/
+
+# TODO: inserire un file config per renderlo cross-platform
 
 # verilog
 
