@@ -1,3 +1,9 @@
+# Problemi con Next-Instruction
+
+Se quando fai una `ni`, avendo subito dopo una call di qualche tipo, non si ferma all'istruzione successiva l'unico modo che ho trovato per aggirare il problema è usare prima `si` e proseguire la funzione con `ni` fino alla ret.
+
+Questo di solito può accadere quando debugghi in remoto con gdb
+
 # Filesystem protetto da SELinux
 
 Se usi SELinux devi abilitare la condivisione dei file temporanei.

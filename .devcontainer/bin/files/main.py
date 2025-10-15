@@ -61,7 +61,6 @@ class QemuProgramManager:
         self.running = False
       
     # Avvia il compilato sotto qemu-user-static in modalità debug
-    # TODO: da implementare la ridirezione degli input da un file
     def start(self):
         if self.running:
             print("⚠️  Il programma è già in esecuzione.")
@@ -71,6 +70,7 @@ class QemuProgramManager:
         cmd = [
             "qemu-i386-static", 
             "-g", str(self.port),
+            "-one-insn-per-tb",
             self.binary_path
         ]
 
@@ -93,7 +93,7 @@ class QemuProgramManager:
     # Redireziona l'output del compilato su stdout
     def _redirect_output(self):
         for line in self.process.stdout:
-            sys.stdout.write(line)
+            sys.stdout.write("output << "+line)
             sys.stdout.flush()
 
     # Invia input allo stdin del compilato
@@ -115,40 +115,30 @@ class QemuProgramManager:
         else:
             print("⚠️  Nessun processo QEMU in esecuzione.")
     
-    def before_exec(self):
+    def before_exec(self, cmd):
         asm_line = [i.strip() for i in show_next_instruction().split(":")[-1].split(' ') if i.strip() != '']
 
+        # TODO: fare i controlli per ogni funzione
         inputs_calls = {
             "inchar" : lambda x: x in string.printable,
             "inbyte" : lambda x: x >=0 and x < 256, 
             "inword" : lambda x: x >=0 and x < 65536, 
             "inlong" : lambda x: x >=0 and x < 4294967296,
-            "indecimal" : None,
             "inline" : None
         }
-
-        # print("non è una call", "call" != asm_line[0])
-        # print("non è presente un input:", asm_line[-1][1:3])
 
         if "call" != asm_line[0] or asm_line[-1][1:3] != "in":
             return
 
-        data = input(f"{asm_line[-1][1:-1]}: ")
+        data = input(f"{asm_line[-1][1:-1]} >> ")
         self.send_input(data)
-        return
-        
-        if "inline" == asm_line[2]:
-            data = input()
-            self.send_input(data)
-        
-        if "decimal" not in asm_line[2]:
-            ok = False
-            while not ok:
-                try:
-                    data = int(input(), 16)
-                    ok = True
-                except: pass
 
+        if cmd in ["next", "nexti", 'n', 'ni']:
+            print("TODO: da implemetnare una si ed una finish")
+            # A quanto pare il bug è presente anche su gdb-multiarch senza questo setup
+            return 
+
+        return
         
 
 # ==============================================================
@@ -171,10 +161,10 @@ class GDBCommandOverrides:
     def _wrap_commands(self):
         #FIXME: quando uso ni su una funzione di input prosegue con la run del programma senza andare alla prossima istruzione
         for cmd in ["next", "step", "nexti", "stepi"]:
-            gdb.execute(f"define hook-{cmd}\npython manager.before_exec()\nend")
+            gdb.execute(f"define hook-{cmd}\npython manager.before_exec('{cmd}')\nend")
             # gdb.execute(f"define hookpost-{cmd}\npython manager.after_exec()\nend")
 
-        #TODO: va aggiunto un wrap alla funzione di continue così da prendere gli input quando viene richiesto
+        #TODO: va aggiunto un wrap alla funzione continue così da prendere gli input quando viene richiesto
         # --> potrei implementarla scorrendo in automatico con ni fixati, così da riutilizzare il codice di controllo usato nella exec_before
         print("🔧 Hook installati su: next, step, nexti, stepi")
 
@@ -193,6 +183,7 @@ class MyRunCommand(gdb.Command):
         gdb.execute(f"target remote :{self.manager.port}")
         gdb.execute("continue")
 
+# TODO: da implementare la ridirezione degli input da un file
 class MyStartCommand(gdb.Command):
     def __init__(self, manager):
         super(MyStartCommand, self).__init__("start", gdb.COMMAND_USER)
