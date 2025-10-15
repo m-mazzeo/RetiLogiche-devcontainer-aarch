@@ -1,7 +1,9 @@
 
 # Startup commands run by debug.ps1
 
-target remote localhost:1337
+source /home/vscode/RETI/bin/files/main.py
+python manager = QemuProgramManager()
+python overrides = GDBCommandOverrides(manager)
 
 define qquit
 set confirm off
@@ -11,6 +13,7 @@ document qquit
 Quit without asking for confirmation.
 end
 
+# FIXME: non funziona
 define rrun
 set confirm off
 run
@@ -21,4 +24,4 @@ Re-run without asking for confirmation.
 end
 
 break _main
-
+run

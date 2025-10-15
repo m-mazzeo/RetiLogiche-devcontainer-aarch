@@ -43,15 +43,19 @@ if [[ "$fileHeader" != *"ELF 32-bit"* ]]; then
     fi
 fi
 
-start_executable="qemu-i386-static -g 1337 $executablePath"
-debug_executable="sleep 1 && gdb-multiarch -x /home/vscode/RETI/bin/files/gdb_startup \"$executablePath\""
+# ==============
+cp "$executablePath.s" /tmp/temp.s
+gdb-multiarch -x /home/vscode/RETI/bin/files/gdb_startup "$executablePath"
 
-# zellij --session deb --layout /home/vscode/RETI/bin/files/debug-layout.kdl
+# start_executable="qemu-i386-static -g 1337 $executablePath"
+# debug_executable="sleep 1 && gdb-multiarch -x /home/vscode/RETI/bin/files/gdb_startup \"$executablePath\""
 
-tmux new-session -d -s "deb" -n qemu \
-	"$debug_executable; tmux wait-for qemu_done"
+# # zellij --session deb --layout /home/vscode/RETI/bin/files/debug-layout.kdl
 
-tmux split-window -h -t "deb" \
-	"$start_executable; tmux wait-for -S qemu_done"
+# tmux new-session -d -s "deb" -n qemu \
+# 	"$debug_executable; tmux wait-for qemu_done"
 
-tmux attach-session -t "deb"\; select-pane -t 0
+# tmux split-window -h -t "deb" \
+# 	"$start_executable; tmux wait-for -S qemu_done"
+
+# tmux attach-session -t "deb"\; select-pane -t 0
