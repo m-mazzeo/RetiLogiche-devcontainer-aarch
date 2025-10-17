@@ -201,25 +201,13 @@ class GDBCommandOverrides:
         """
         asm_line = show_next_instruction("step" == cmd[:-1])
 
-        # TODO: fare i controlli per ogni funzione della utility.s
-        # check_utility_call = {
-        #     "char" : lambda x: x in string.printable,
-        #     "byte" : lambda x: x >=0 and x < 256,
-        #     "word" : lambda x: x >=0 and x < 65536,
-        #     "long" : lambda x: x >=0 and x < 4294967296,
-        # }
-
+        # TODO: Fare i controlli sulle syscall
+        
         if "call" != asm_line[0] or asm_line[-1][1:3] != "in":
             return
 
         data = input(f"{asm_line[-1][1:-1]} >> ")
         self.manager.send_input(data)
-
-        # TODO: fare una funzione fixed_ni
-        # if cmd in ["next", "nexti", 'n', 'ni']:
-        #     print("da implemetnare una si (default di gdb) e ridefinisci la finish")
-        #     # A quanto pare il bug è presente anche su gdb-multiarch senza questo setup
-        #     return
 
         return
 
@@ -232,13 +220,10 @@ class GDBCommandOverrides:
         print("🔧 Comandi GDB personalizzati registrati.")
 
     def _wrap_commands(self):
-        #FIXME: quando uso ni su una funzione di input prosegue con la run del programma senza andare alla prossima istruzione
         for cmd in ["next", "nexti", "step", "stepi"]:
             gdb.execute(f"define hook-{cmd}\npython overrides.before_exec('{cmd}')\nend")
             # gdb.execute(f"define hookpost-{cmd}\npython manager.after_exec()\nend")
 
-        #TODO: va aggiunto un wrap alla funzione continue così da prendere gli input quando viene richiesto
-        # --> potrei implementarla scorrendo in automatico con ni fixati, così da riutilizzare il codice di controllo usato nella exec_before
         print("🔧 Hook installati su: next, step, nexti, stepi")
 
 # ---------------------
@@ -281,6 +266,14 @@ class MyQuitCommand(gdb.Command):
             os._exit(0)
 
 # TODO: sovrascrivere il comando (o fare un wrap) su continue
+# --> potrei implementarla scorrendo in automatico con ni fixati, così da riutilizzare il codice di controllo usato nella exec_before
+
+
+# TODO: fare una funzione fixed_ni
+# if cmd in ["next", "nexti", 'n', 'ni']:
+#     print("da implemetnare una si (default di gdb) e ridefinisci la finish")
+#     # A quanto pare il bug è presente anche su gdb-multiarch senza questo setup
+#     return
 
 # ==============================================================
 # ESEMPIO DI UTILIZZO AUTOMATICO

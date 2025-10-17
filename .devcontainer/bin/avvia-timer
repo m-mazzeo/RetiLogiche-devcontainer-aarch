@@ -1,0 +1,135 @@
+#!/bin/bash
+
+set -e
+
+# COMANDI UTILI: 
+# - SEPARO GLI INPUT: for elem in esempi/*; do head -n 2 $elem > inputs/$(basename $elem); done
+# - CONTROLLO I TEST: for elem in inputs/*; do echo "=== $elem"; ./MarcoMazzeo < $elem | tr -d "\r" | diff - esempi/$(basename $elem); done
+
+# PAGINA_APPELLI="https://calcolatori.iet.unipi.it/appelli2.php?tag=c2as_qemu-v8"
+WORKSPACE="/home/vscode/RETI/workdir/Scritti"
+
+NC='\033[0m'
+
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\e[0;33m'
+
+get_solutions () {
+    find "$1" \( -name "ProvaStudente.s" \
+              -o -name "Descrizione.v" \
+              -o -name "Sintesi.v"     \
+              -o -name "Pretest.md"    \
+    \) -type f 2>/dev/null
+}
+
+help_function () {
+    NAME=$(basename "$1")
+    max_arg_len=7
+
+    printf "$NAME list       mostra tutte le date disponibili per il download\n"
+    printf "$NAME appello    apre visual studio code per l'esame nella data\n"
+    printf           "%*s    avviando anche un timer\n" $((${#NAME} + $max_arg_len + 1))
+    exit 1
+}
+SOLUTION_FILES=4
+
+if [ -z "$1" ]; then
+    help_function "$0"
+fi
+
+YEARS=($(ls "$WORKSPACE"))
+
+if [ "$1" = "list" ]; then
+    printf "Esami:\n"
+    for YYYY in "${YEARS[@]}"; do
+
+        # Controllo se la consistenza della cartella di workspace
+        [ ${#YYYY} -ne 4 ] || [ "$YYYY" -lt 2019 ] && continue
+        
+        # Calcolo il percorso ed il contenuto della directory
+        percorso="$WORKSPACE/$YYYY"
+
+        directory=()
+        for entry in "$percorso"/*; do
+            [ -d "$entry" ] && directory+=("\"$(basename "$entry")\"")
+        done
+
+        length=${#directory[@]}
+        soluzioni=$(get_solutions "$percorso" | wc -l)
+
+        # stampo l'anno
+        if [ $soluzioni -eq $((length * $SOLUTION_FILES)) ]; then
+            printf "$GREEN $YYYY $NC: "
+        else
+            printf  "$BLUE $YYYY $NC: ";
+        fi
+
+        # Stampo gli appelli
+        for dir in "${directory[@]}"; do
+            solves=$(get_solutions "$percorso/${dir:1:-1}/" | wc -l)
+            # <S
+            
+            if [ $solves -eq 0 ]; then
+                printf "$BLUE$dir$NC "
+
+            elif [ $solves -lt $SOLUTION_FILES ]; then
+                printf "$YELLOW$dir$NC "
+
+            else
+                printf "$GREEN$dir$NC "
+            fi
+        done
+        printf "\n"
+
+    done
+
+elif [ "$1" = "start" ]; then
+
+    if [ -f "$PWD/.time" ]; then
+
+        if { 
+            [ $(cat "$PWD/.time" | tail -n 2 | wc -l             ) -eq 1 ]  || 
+            [ $(cat "$PWD/.time" | tail -n 2 | grep "NEW" | wc -l) -eq 1 ];
+         }; then
+
+            printf "$RED >> timer già avviato$NC\n"
+            exit 1
+        fi
+
+        printf "\nNEW\n" >> "$PWD/.time"
+    else
+        touch "$PWD/.time"
+    fi
+
+    date >> "$PWD/.time"
+
+elif [ "$1" = "stop" ]; then
+    
+    if  [ -f "$PWD/.time" ] &&  {
+            [ $(cat "$PWD/.time" | tail -n 2| wc -l              ) -eq 1 ] ||
+            [ $(cat "$PWD/.time" | tail -n 2| grep "NEW" | wc -l ) -eq 1 ];
+        }; then
+
+        DATE2="$(date)"
+        DATE1="$(cat "$PWD/.time"| tail -n 1)"
+
+        delta=$(( $(date -d "$DATE2" +%s) - $(date -d "$DATE1" +%s) ))
+        printf -v tempo "%02d:%02d:%02d" $((delta/3600)) $(( (delta%3600)/60 )) $((delta%60))
+
+        echo "$DATE2" >> "$PWD/.time"
+        printf "[$BLUE i $NC] ci hai messo $tempo\n"
+
+    else
+        printf "$RED >> Prima avvia il timer$NC\n"
+    fi
+
+else
+    help_function "$0"
+fi 
+
+# elif [ -d "$WORKSPACE/${1:0:4}/$1" ]; then
+#     WORKDIR="$WORKSPACE/${1:0:4}/$1"
+#     echo "sad"
+# fi
