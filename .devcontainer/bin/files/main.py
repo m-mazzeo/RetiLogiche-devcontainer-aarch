@@ -1,24 +1,23 @@
 """
-Questo file implementa una classe per la gestione del compilato avviata 
+Questo file implementa una classe per la gestione del compilato avviata
 in modalità debugging con qemu-user-static.
 
 Requisiti essenziali:
- - Il sistema deve poter avviare e il compilato in modalità 
+ - Il sistema deve poter avviare e il compilato in modalità
    debugging sulla porta tcp 1337
 
  - Il sistema deve ridirezionare l'output del compilato nello standard-out
  - Il sistema deve implementare una funzione per prendere dallo standard-input
    il contenuto da ridirezionare al compilato
-  
+
  - Il sistema deve ridefinire le funzioni run, start e quit di gdb in modo da interagire con il compilato
  - Il sistema deve ridefinire le funzioni di next e step ridirezionando l'output
    e l'input qualora necessario
-   
+
 Requisiti utili:
- - Il sistema deve poter fermare il compilato 
+ - Il sistema deve poter fermare il compilato
 
-fammi due classi, una per la gestione del compilato ed una per ridefinire i comandi su gdb
-
+documentazione usata: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Python-API.html?utm_source=chatgpt.com
 """
 import gdb
 import subprocess
@@ -33,15 +32,15 @@ import string
 
 def get_instruction(addr, n=1):
     if n > 1:
-        return  [ 
-            i.strip().split(':')[-1] for i in 
+        return  [
+            i.strip().split(':')[-1] for i in
             gdb.execute(f"x/{n}i {addr}", to_string=True).strip().splitlines()
-        ] 
+        ]
     elif n == 1:
         return gdb.execute(f"x/i {addr}", to_string=True).strip().split(':')[-1]
     else:
         return None
-    
+
 def show_next_instruction(is_step=False):
     try:
         frame = gdb.selected_frame()
@@ -53,7 +52,7 @@ def show_next_instruction(is_step=False):
         # Istruzioni di salto: jmp, call, loop, ret
         if "jmp" == cur[0] or "loop" == cur[0] or (is_step and "call" == cur[0]):
             nxt = get_instruction(cur[1])
-        
+
         if "ret" == cur[0]:
             # 1. Prendi l'indirizzo dallo stack
             esp = int(frame.read_register("esp"))
@@ -64,28 +63,42 @@ def show_next_instruction(is_step=False):
         # Istruzioni di salto pazzerelle: jmp_condition, loop_cond
         if (cur[0][0] == "j" and cur[0][1:] != "mp") or (cur[0] != "loop" and cur[0][:4] == "loop"):
             #  1. Evaluate the condition
-            f = frame.read_register("eflags") # I flag sono rappresentati tutti in maiuscolo (solo le iniziali)
+            f = str(frame.read_register("eflags")) # I flag sono rappresentati tutti in maiuscolo (solo le iniziali)
             condition_flags = {
-                "e" : lambda : "ZF" not in f,
-                "a" : lambda : "CF"     in f,
-                "b" : lambda : "CF" not in f,
-                "g" : lambda : ("OF" not in f and "SF" not in f) or ("OF" in f and "SF"     in f),
-                "l" : lambda : ("OF" not in f and "SF"     in f) or ("OF" in f and "SF" not in f),
-                "z" : lambda : "ZF" in f,
-                "c" : lambda : "CF" in f,
-                "o" : lambda : "OF" in f,
-                "s" : lambda : "SF" in f
+                # uguaglianza
+                "e" : lambda: "ZF" in f,                      # equal / zero
+                "ne": lambda: "ZF" not in f,                  # not equal
+
+                # unsigned (CF)
+                "a" : lambda: ("CF" not in f) and ("ZF" not in f),  # above (unsigned >)
+                "ae": lambda: "CF" not in f,                        # above or equal (>= unsigned)
+                "b" : lambda: "CF" in f,                            # below (unsigned <)
+                "be": lambda: ("CF" in f) or ("ZF" in f),           # below or equal (<= unsigned)
+
+                # signed (SF, OF)
+                "g" : lambda: ("ZF" not in f) and (("SF" in f) == ("OF" in f)),  # greater (signed >)
+                "ge": lambda: ("SF" in f) == ("OF" in f),                        # greater or equal (>= signed)
+                "l" : lambda: ("SF" in f) != ("OF" in f),                        # less (signed <)
+                "le": lambda: ("ZF" in f) or (("SF" in f) != ("OF" in f)),       # less or equal (<= signed)
+
+                # singoli flag
+                "z" : lambda: "ZF" in f,
+                "nz": lambda: "ZF" not in f,
+                "c" : lambda: "CF" in f,
+                "nc": lambda: "CF" not in f,
+                "o" : lambda: "OF" in f,
+                "no": lambda: "OF" not in f,
+                "s" : lambda: "SF" in f,
+                "ns": lambda: "SF" not in f,
             }
+
 
             conditions = cur[0][1:] if cur[0][0] == "j" else cur[0][4:]
 
-            if conditions[0] == 'n':
-                check = not condition_flags[conditions[1]]()
-            else:
-                check = condition_flags[conditions[0]]() or condition_flags[conditions[1]]()
-
             #  2. Send the instruction based on the condition
-            if check: nxt = get_instruction(cur[1])
+            if condition_flags[conditions]():
+
+                nxt = get_instruction(cur[1])
 
         # print(f"📍 Istruzione corrente: {' '.join(cur)}")
         return gdb.string_to_argv(nxt)
@@ -104,12 +117,12 @@ class QemuProgramManager:
                 binary_path = gdb.current_progspace().filename
             except gdb.error:
                 binary_path = None
-        
+
         self.binary_path = binary_path
         self.port = port
         self.process = None
         self.running = False
-      
+
     # Avvia il compilato sotto qemu-user-static in modalità debug
     def start(self):
         if self.running:
@@ -118,7 +131,7 @@ class QemuProgramManager:
 
         print(f"🚀 Avvio di {self.binary_path} in modalità debug su tcp:{self.port}...")
         cmd = [
-            "qemu-i386-static", 
+            "qemu-i386-static",
             "-g", str(self.port),
             "-one-insn-per-tb",
             self.binary_path
@@ -164,7 +177,7 @@ class QemuProgramManager:
             print("✅ Compilato terminato.")
         else:
             print("⚠️  Nessun processo QEMU in esecuzione.")
-    
+
 
 # ==============================================================
 # Classe 2 — Override dei comandi GDB
@@ -176,10 +189,10 @@ class GDBCommandOverrides:
 
         self._register_commands()
         self._wrap_commands()
-    
+
     def before_exec(self, cmd):
         """
-        Prima di eseguire una istruzione, questa funzione controlla se si sta 
+        Prima di eseguire una istruzione, questa funzione controlla se si sta
         per richiedere un input da tastiera e, se richiesto, ridireziona l'input
         desiderato direttamente al processo emulato con qemu.
 
@@ -191,8 +204,8 @@ class GDBCommandOverrides:
         # TODO: fare i controlli per ogni funzione della utility.s
         # check_utility_call = {
         #     "char" : lambda x: x in string.printable,
-        #     "byte" : lambda x: x >=0 and x < 256, 
-        #     "word" : lambda x: x >=0 and x < 65536, 
+        #     "byte" : lambda x: x >=0 and x < 256,
+        #     "word" : lambda x: x >=0 and x < 65536,
         #     "long" : lambda x: x >=0 and x < 4294967296,
         # }
 
@@ -206,10 +219,10 @@ class GDBCommandOverrides:
         # if cmd in ["next", "nexti", 'n', 'ni']:
         #     print("da implemetnare una si (default di gdb) e ridefinisci la finish")
         #     # A quanto pare il bug è presente anche su gdb-multiarch senza questo setup
-        #     return 
+        #     return
 
         return
-        
+
 
     def _register_commands(self):
         # Sovrascrive i comandi di GDB con classi Python personalizzate
@@ -217,7 +230,7 @@ class GDBCommandOverrides:
         MyStartCommand(runner)
         MyQuitCommand(self.manager)
         print("🔧 Comandi GDB personalizzati registrati.")
-    
+
     def _wrap_commands(self):
         #FIXME: quando uso ni su una funzione di input prosegue con la run del programma senza andare alla prossima istruzione
         for cmd in ["next", "nexti", "step", "stepi"]:
@@ -245,7 +258,7 @@ class MyRunCommand(gdb.Command):
         super(MyRunCommand, self).__init__("run", gdb.COMMAND_USER)
         self.manager = manager
 
-    def invoke(self, arg, from_tty):        
+    def invoke(self, arg, from_tty):
         self.manager.start()
         gdb.execute(f"target remote :{self.manager.port}")
         gdb.execute("continue")
@@ -266,6 +279,8 @@ class MyQuitCommand(gdb.Command):
             except Exception:
                 pass
             os._exit(0)
+
+# TODO: sovrascrivere il comando (o fare un wrap) su continue
 
 # ==============================================================
 # ESEMPIO DI UTILIZZO AUTOMATICO
