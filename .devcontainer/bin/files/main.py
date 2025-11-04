@@ -207,6 +207,7 @@ class GDBCommandOverrides:
             return
 
         data = input(f"{asm_line[-1][1:-1]} >> ")
+        # tips: al posto di utilizzare la funzione di input di python rifai la chiamata di sistema che chiama la funzione
         self.manager.send_input(data)
 
         return
