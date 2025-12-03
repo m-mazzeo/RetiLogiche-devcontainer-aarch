@@ -23,5 +23,5 @@ document rrun
 Re-run without asking for confirmation.
 end
 
-break _main
-run
+python gdb.execute("break _main", to_string=True)
+python gdb.execute("run", to_string=True)

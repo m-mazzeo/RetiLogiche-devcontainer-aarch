@@ -218,14 +218,11 @@ class GDBCommandOverrides:
         runner = MyRunCommand(self.manager)
         MyStartCommand(runner)
         MyQuitCommand(self.manager)
-        print("🔧 Comandi GDB personalizzati registrati.")
 
     def _wrap_commands(self):
         for cmd in ["next", "nexti", "step", "stepi"]:
             gdb.execute(f"define hook-{cmd}\npython overrides.before_exec('{cmd}')\nend")
             # gdb.execute(f"define hookpost-{cmd}\npython manager.after_exec()\nend")
-
-        print("🔧 Hook installati su: next, step, nexti, stepi")
 
 # ---------------------
 # Ridefinizioni comandi

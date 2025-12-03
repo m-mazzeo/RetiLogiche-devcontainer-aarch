@@ -56,4 +56,5 @@ sed -i 's|\.include "./files/utility\.s"|.include "/home/vscode/RETI/bin/files/u
 
 if ! i686-linux-gnu-gcc -m32 -no-pie -o "$dir/$name" '-Wa,-a' '-Wa,--defsym,LINUX=1' > "$dir/$name.lst" -g $BIN_DIR/files/main.c /tmp/temp.s; then
     echo "Assembler error"
+    exit 1
 fi

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/base:noble
+FROM --platform=linux/amd64 mcr.microsoft.com/devcontainers/base:noble
 
 ENV HOME=/home/vscode/
 
@@ -13,8 +13,10 @@ RUN apt update && apt install -y file
 
 # tmux
 	
-RUN ln -s $(find /usr/i686-linux-gnu/ -name ld-linux.so.2 | head -n 1) /lib/
-RUN ln -s $(find /usr/i686-linux-gnu/ -name libc.so.6 | head -n 1) /lib/
+#RUN ln -s $(find /usr/i686-linux-gnu/ -name ld-linux.so.2 | head -n 1) /lib/
+#RUN ln -s $(find /usr/i686-linux-gnu/ -name libc.so.6 | head -n 1) /lib/
+RUN ln -s /usr/i686-linux-gnu/lib/libc.so.6 /lib
+RUN ln -s /usr/i686-linux-gnu/lib/ld-linux.so.2 /lib
 
 # TODO: inserire un file config per renderlo cross-platform
 

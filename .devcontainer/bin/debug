@@ -45,7 +45,7 @@ fi
 
 # ==============
 cp "$executablePath.s" /tmp/temp.s
-gdb-multiarch -x /home/vscode/RETI/bin/files/gdb_startup "$executablePath"
+gdb -x /home/vscode/RETI/bin/files/gdb_startup "$executablePath"
 
 # start_executable="qemu-i386-static -g 1337 $executablePath"
 # debug_executable="sleep 1 && gdb-multiarch -x /home/vscode/RETI/bin/files/gdb_startup \"$executablePath\""

@@ -1,3 +1,5 @@
 .old/*
 WorkSpace/*
+WorkSpace
 */*.rclonelink
+.DS_Store
